@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f6f3">
+  <meta name="description" content="Remove a solid green, blue, or custom color background from an image. Process locally and download a transparent PNG.">
+  <title>Green Screen Remover — Clearcut</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="Clearcut home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>clearcut<span class="brand-dot">.</span></span></a>
+      <span class="local-note"><span class="live-dot"></span> Runs on your device</span>
+    </header>
+
+    <section class="workspace" id="top" aria-labelledby="page-title">
+      <div class="workspace-head">
+        <div><p class="eyebrow">CHROMA KEY STUDIO <span> / </span> IMAGE</p><h1 id="page-title">Green Screen Remover</h1></div>
+        <span class="step-count"><b>01</b><span> / 03</span> &nbsp;UPLOAD</span>
+      </div>
+
+      <div class="studio">
+        <section class="source-panel panel" aria-label="Image input">
+          <div class="panel-head"><div><span class="panel-index">01</span><h2>Source image</h2></div><span class="panel-meta" id="sourceMeta">AWAITING IMAGE</span></div>
+          <div class="source-stage checker" id="sourceStage">
+            <div class="empty-state" id="emptyState"><div class="upload-symbol" aria-hidden="true"><span>↑</span></div><p class="drop-title">Drop an image here</p><p class="drop-sub">or choose a file from your device</p><button class="button button-dark" id="chooseButton" type="button">Choose image <span>↗</span></button><div class="import-options"><button type="button" id="pasteButton" class="import-link">Paste image</button><span>·</span><button type="button" id="sampleButton" class="import-link">Try sample</button></div><p class="format-note">PNG · JPG · WEBP · GIF · BMP</p></div>
+            <img id="sourceImage" alt="Selected source image" hidden>
+            <div class="image-badge" id="sourceBadge" hidden>ORIGINAL</div>
+            <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/*,video/mp4,video/webm,video/quicktime" hidden>
+          </div>
+          <div class="source-foot"><span id="fileInfo">Your file stays on this device.</span><button class="text-button" id="replaceButton" type="button" hidden>Replace image</button></div>
+        </section>
+
+        <section class="controls-panel panel" aria-label="Key settings">
+          <div class="panel-head"><div><span class="panel-index">02</span><h2>Key settings</h2></div><span class="panel-meta">LIVE PREVIEW</span></div>
+          <div class="controls-body">
+            <div class="control-label"><label>Screen color</label><span class="hint">Pick a preset or sample your image</span></div>
+            <div class="swatches" role="group" aria-label="Screen color presets">
+              <button type="button" class="swatch active" data-color="#00d26a" aria-pressed="true"><i class="green"></i> Green</button>
+              <button type="button" class="swatch" data-color="#168cff" aria-pressed="false"><i class="blue"></i> Blue</button>
+              <button type="button" class="swatch custom-swatch" id="customColorButton" aria-pressed="false"><i class="custom-dot" id="customDot"></i> Custom</button>
+              <input type="color" id="colorInput" value="#00d26a" aria-label="Choose custom key color">
+            </div>
+            <button type="button" class="eyedropper" id="eyedropperButton" disabled><span class="eyedrop-icon">⌖</span><span><b>Sample from image</b><small>Click a background pixel in the source</small></span><span class="key-hint">PICK</span></button>
+            <div class="color-readout"><span class="color-chip" id="colorChip"></span><span>KEY COLOR</span><code id="colorValue">#00D26A</code></div>
+
+            <div class="range-control"><div class="range-title"><label for="tolerance">Color tolerance</label><output id="toleranceOutput">24%</output></div><input id="tolerance" type="range" min="1" max="100" value="24"><div class="range-ends"><span>Precise</span><span>More colors</span></div></div>
+            <div class="range-control"><div class="range-title"><label for="softness">Edge softness</label><output id="softnessOutput">18%</output></div><input id="softness" type="range" min="0" max="100" value="18"><div class="range-ends"><span>Crisp</span><span>Softer edge</span></div></div>
+            <button class="button button-accent process-button" id="processButton" type="button" disabled><span class="button-label">Remove background</span><span class="button-arrow">↗</span></button>
+            <div class="progress-wrap" id="progressWrap" hidden><div class="progress-caption"><span id="progressText">Preparing image…</span><span id="progressPercent">0%</span></div><div class="progress-track"><span id="progressBar"></span></div></div>
+            <p class="privacy-line"><span>◇</span> Image processing happens locally in your browser.</p>
+          </div>
+        </section>
+
+        <section class="result-panel panel" aria-label="Transparent result">
+          <div class="panel-head"><div><span class="panel-index">03</span><h2>Transparent result</h2></div><span class="panel-meta" id="resultMeta">PNG · ALPHA</span></div>
+          <div class="result-stage checker" id="resultStage"><div class="result-placeholder" id="resultPlaceholder"><div class="target-icon" aria-hidden="true">◌</div><p>Your cutout<br>will appear here</p><span>TRANSPARENT CANVAS</span></div><canvas id="resultCanvas" hidden></canvas><div class="result-badge" id="resultBadge" hidden><span class="live-dot"></span> READY</div></div>
+          <div class="result-foot"><span id="resultInfo">PNG with transparency</span><button class="button button-download" id="downloadButton" type="button" disabled>Download PNG <span>↓</span></button></div>
+        </section>
+      </div>
+      <div class="status-line" aria-live="polite"><span class="status-mark">✳</span><span id="statusText">Choose an image to begin. Nothing is uploaded.</span><span class="status-shortcut">TIP&nbsp; <kbd>⌘</kbd><kbd>O</kbd> TO CHOOSE</span></div>
+    </section>
+
+    <section class="details-grid" aria-label="Tool information">
+      <article class="detail-card"><p class="eyebrow">01 / HOW TO USE</p><h2>Three steps to a clean cutout.</h2><ol class="how-list"><li><span>01</span>Upload an image with a solid color screen.</li><li><span>02</span>Choose a color, or sample it from the image.</li><li><span>03</span>Fine-tune the edge, then download your PNG.</li></ol></article>
+      <article class="detail-card"><p class="eyebrow">02 / FORMATS & LIMITS</p><h2>Made for still images.</h2><p class="body-copy">Input: PNG, JPG, JPEG, WebP, GIF, and BMP. Output: transparent PNG. Large images may take longer or exceed your browser's available memory. Results depend on how evenly the screen is lit.</p><p class="video-note"><span>VIDEO</span> Video files can be selected, but transparent video export is not available in this version.</p></article>
+      <article class="detail-card faq-card"><p class="eyebrow">03 / QUICK ANSWERS</p><h2>Good to know.</h2><details><summary>What does “green screen background remover” mean?</summary><p>It is another name for a chroma key tool that makes a selected background color transparent.</p></details><details><summary>Can I remove a color other than green?</summary><p>Yes. Pick blue, choose any custom color, or sample a pixel directly from your image.</p></details><details><summary>Does this upload my image?</summary><p>No. The image is processed in this page using your browser's Canvas API.</p></details></article>
+    </section>
+    <footer><a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>clearcut<span class="brand-dot">.</span></span></a><span>LOCAL BY DESIGN <span class="footer-dot">·</span> NO ACCOUNT NEEDED</span><a href="#top" class="back-top">BACK TO TOOL ↑</a></footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
