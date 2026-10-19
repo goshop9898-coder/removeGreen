@@ -8,6 +8,35 @@
   const rgbToHex = (rgb) => '#' + rgb.map(v => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
   const setStatus = (s) => $('statusText').textContent = s;
 
+  function dominantEdgeColor(img) {
+    // Downsample large photos before scanning their one-pixel perimeter so
+    // automatic detection stays cheap even for multi-megapixel uploads.
+    const scale = Math.min(1, 512 / Math.max(img.naturalWidth, img.naturalHeight));
+    const width = Math.max(1, Math.round(img.naturalWidth * scale));
+    const height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = width; sampleCanvas.height = height;
+    const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    sampleCtx.drawImage(img, 0, 0, width, height);
+    const { data } = sampleCtx.getImageData(0, 0, width, height);
+    const colors = new Map();
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      if (x !== 0 && y !== 0 && x !== width - 1 && y !== height - 1) continue;
+      const i = (y * width + x) * 4;
+      if (data[i + 3] < 128) continue;
+      // Five bits per channel merge small JPEG/compression variations.
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const bucket = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+      let color = colors.get(bucket);
+      if (!color) { color = { count: 0, r: 0, g: 0, b: 0 }; colors.set(bucket, color); }
+      color.count++; color.r += r; color.g += g; color.b += b;
+    }
+    let dominant = null;
+    for (const color of colors.values()) if (!dominant || color.count > dominant.count) dominant = color;
+    if (!dominant) return null;
+    return [dominant.r, dominant.g, dominant.b].map(channel => Math.round(channel / dominant.count));
+  }
+
   function chooseFile(file) {
     if (!file) return;
     if (file.type.startsWith('video/')) {
@@ -21,12 +50,20 @@
     state.url = URL.createObjectURL(file); state.fileName = file.name.replace(/\.[^.]+$/, '') || 'cutout';
     const img = new Image();
     img.onload = () => {
+      const detectedKey = dominantEdgeColor(img);
       state.image = img; sourceImage.src = state.url; sourceImage.hidden = false; emptyState.hidden = true; $('sourceBadge').hidden = false;
       $('sourceMeta').textContent = 'IMAGE READY'; $('fileInfo').textContent = `${file.name} · ${img.naturalWidth} × ${img.naturalHeight}`;
       $('replaceButton').hidden = false; $('processButton').disabled = false; $('eyedropperButton').disabled = false;
       $('resultPlaceholder').hidden = false; resultCanvas.hidden = true; $('resultBadge').hidden = true; $('downloadButton').disabled = true;
       $('resultInfo').textContent = 'PNG with transparency'; state.dirty = true;
-      setStatus('Image ready. Sample the screen color or keep the green preset, then remove the background.');
+      if (detectedKey) {
+        updateKey(detectedKey, null); $('customDot').style.setProperty('--custom-color', rgbToHex(detectedKey)); $('colorInput').value = rgbToHex(detectedKey);
+        setStatus(`Detected edge color ${rgbToHex(detectedKey)}. Click Remove background, or sample another color to fine-tune.`);
+      } else {
+        const greenButton = document.querySelector('.swatch[data-color="#00d26a"]');
+        updateKey(hexToRgb('#00d26a'), greenButton);
+        setStatus('No opaque edge color found. Using the Green preset; sample another color if needed.');
+      }
     };
     img.onerror = () => setStatus('This image could not be opened by the browser. Try PNG, JPG, WebP, GIF, or BMP.');
     img.src = state.url;
