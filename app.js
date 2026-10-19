@@ -2,7 +2,7 @@
   const $ = (id) => document.getElementById(id);
   const fileInput = $('fileInput'), sourceImage = $('sourceImage'), sourceStage = $('sourceStage'), emptyState = $('emptyState');
   const resultCanvas = $('resultCanvas'), ctx = resultCanvas.getContext('2d', { willReadFrequently: true });
-  const state = { image: null, url: null, key: [0, 210, 106], tolerance: 24, softness: 18, busy: false, dirty: true, fileName: 'cutout' };
+  const state = { image: null, url: null, key: [0, 210, 106], keyMode: 'green', tolerance: 24, softness: 18, busy: false, dirty: true, fileName: 'cutout' };
   const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
   const hexToRgb = (hex) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
   const rgbToHex = (rgb) => '#' + rgb.map(v => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
@@ -62,7 +62,7 @@
   ['dragleave','drop'].forEach(type => document.addEventListener(type, e => { e.preventDefault(); if (type === 'drop') chooseFile(e.dataTransfer.files[0]); document.body.classList.remove('is-dragging'); }));
 
   function updateKey(rgb, active) {
-    state.key = rgb; const hex = rgbToHex(rgb); $('colorChip').style.background = hex; $('colorValue').textContent = hex;
+    state.key = rgb; state.keyMode = active?.dataset.color?.toLowerCase() === '#00d26a' ? 'green' : 'sampled'; const hex = rgbToHex(rgb); $('colorChip').style.background = hex; $('colorValue').textContent = hex;
     document.querySelectorAll('.swatch').forEach(b => { const on = b === active; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
     state.dirty = true;
   }
@@ -91,9 +91,12 @@
     // Work in horizontal slices so progress remains visible and the UI can repaint.
     const imageData = ctx.getImageData(0,0,w,h), data = imageData.data;
     const [kr,kg,kb] = state.key;
-    // Keep the tolerance scale useful for real chroma edges: at the default 24,
-    // the solid key core is about 28 RGB-distance units, not 106.
-    const threshold = 4 + state.tolerance * 0.35;
+    const greenMode = state.keyMode === 'green';
+    // The Green preset looks for green dominance, so it handles common studio
+    // greens even when their brightness differs from the swatch. Other colors
+    // continue to use the sampled-color chroma distance.
+    const greenCutoff = clamp(72 - state.tolerance * 0.65, 8, 72);
+    const threshold = greenMode ? 255 - greenCutoff : 4 + state.tolerance * 0.35;
     const feather = 15 + state.softness * 2.8;
     const pixels = w * h;
     const connected = new Uint8Array(pixels);
@@ -105,6 +108,11 @@
     const keyChroma = [kr / keySum, kg / keySum, kb / keySum];
     const distance = (i) => {
       const r=data[i], g=data[i+1], b=data[i+2], sum=r+g+b;
+      if (greenMode) {
+        if (sum < 45) return 255;
+        const greenExcess = (g - Math.max(r,b)) / sum * 255;
+        return 255 - clamp(greenExcess, 0, 255);
+      }
       if (sum < 45) {
         const dr=r-kr, dg=g-kg, db=b-kb;
         return Math.sqrt(dr*dr+dg*dg+db*db);
@@ -177,7 +185,12 @@
         if(alpha<=0.01){data[i+3]=0;continue;}
         // Unmix the sampled screen color from translucent boundary pixels.
         // This removes the familiar green/white fringe on a checkerboard.
-        if(alpha<0.995){
+        if(alpha<0.995 && greenMode){
+          // Reduce green spill proportionally without assuming the screen was
+          // exactly #00D26A; the Green preset intentionally accepts varied greens.
+          const spill = Math.max(0, data[i+1] - Math.max(data[i], data[i+2]));
+          data[i+1] = clamp(data[i+1] - spill * (1-alpha), 0, 255);
+        } else if(alpha<0.995){
           const inv=1/alpha;
           data[i]=clamp((data[i]-(1-alpha)*kr)*inv,0,255);
           data[i+1]=clamp((data[i+1]-(1-alpha)*kg)*inv,0,255);
